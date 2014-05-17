@@ -2,12 +2,89 @@
 #include <vector>
 #include <iterator>
 #include <numeric>
+#include <cassert>
+
+/// forward declaration
+template <typename _Range>
+class functional_range;
+
+template <typename _Iterator>
+class range_t;
+
+template <typename _Iterator>
+range_t<_Iterator> make_range(_Iterator begin, _Iterator end);
+/// end of fwd
+
+template <typename _Iterator, typename _Predicate>
+class filtering_iterator_t
+    : public std::iterator<std::input_iterator_tag, typename std::iterator_traits<_Iterator>::value_type>
+{
+public:
+    filtering_iterator_t(_Iterator begin, _Iterator end, _Predicate filter)
+        : begin_(begin)
+        , end_(end)
+        , filter_(filter)
+    {
+        skip_bad();
+    }
+
+public:
+    typename filtering_iterator_t::reference operator*() const
+    {
+        assert(begin_ != end_);
+        return *begin_;
+    }
+
+    typename filtering_iterator_t::pointer operator->() const
+    {
+        assert(begin_ != end_);
+        return begin_;
+    }
+
+    filtering_iterator_t& operator++()
+    {
+        ++begin_;
+        skip_bad();
+        return *this;
+    }
+
+    bool operator==(const filtering_iterator_t& other) const
+    {
+        return begin_ == other.begin_;
+    }
+
+    bool operator!=(const filtering_iterator_t& other) const
+    {
+        return !(*this == other);
+    }
+
+private:
+    void skip_bad()
+    {
+        while (begin_ != end_ && !filter_(*begin_))
+        {
+            ++begin_;
+        }
+    }
+
+private:
+    _Iterator begin_;
+    const _Iterator end_;
+    const _Predicate filter_;
+};
+
+template <typename _Iterator, typename _Predicate>
+filtering_iterator_t<_Iterator, _Predicate> make_filter_iterator(_Iterator begin, _Iterator end, _Predicate filter)
+{
+    return filtering_iterator_t<_Iterator, _Predicate>(begin, end, filter);
+}
 
 template <typename _Range>
 class range_algorithm_t
 {
 public:
     typedef typename _Range::value_type value_type;
+    typedef typename _Range::iterator iterator;
 
 public:
     explicit range_algorithm_t(const _Range& range)
@@ -27,6 +104,18 @@ public:
         std::for_each(range_.begin(), range_.end(), op);
     }
 
+    template <typename _Predicate>
+    functional_range<
+        range_t<
+            filtering_iterator_t<iterator, _Predicate> > >
+    filter(const _Predicate& pred) const
+    {
+        typedef functional_range<range_t<filtering_iterator_t<iterator, _Predicate> > > filtering_range_type;
+        auto begin = make_filter_iterator(range_.begin(), range_.end(), pred);
+        auto end = make_filter_iterator(range_.end(), range_.end(), pred);
+        return filtering_range_type(make_range(begin, end));
+    }
+
 private:
     const _Range range_;
 };
@@ -36,6 +125,7 @@ class range_t
 {
 public:
     typedef typename std::iterator_traits<_Iterator>::value_type value_type;
+    typedef _Iterator iterator;
 
 public:
     range_t(_Iterator begin, _Iterator end)
@@ -101,7 +191,9 @@ int main(int argc, const char * argv[])
     enumerate(nums).for_each(&print);
     std::cout << std::endl;
 
-    //enumerate(nums).filter(&is_odd)
+    std::cout << "filter: ";
+    enumerate(nums).filter(&is_odd).for_each(&print);
+    std::cout << std::endl;
 
     //std::istream_iterator<int> eos;
     //std::istream_iterator<int> in(std::cin);
