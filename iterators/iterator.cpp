@@ -43,8 +43,12 @@ public:
 
     filtering_iterator_t& operator++()
     {
-        ++begin_;
-        skip_bad();
+        if (begin_ != end_)
+        {
+            ++begin_;
+            skip_bad();
+        }
+
         return *this;
     }
 
@@ -79,6 +83,77 @@ filtering_iterator_t<_Iterator, _Predicate> make_filter_iterator(_Iterator begin
     return filtering_iterator_t<_Iterator, _Predicate>(begin, end, filter);
 }
 
+template <typename _Iterator, typename _Transformer, typename _Value>
+class transforming_iterator_t
+    : public std::iterator<std::input_iterator_tag, typename std::add_const<_Value>::type>
+{
+public:
+    transforming_iterator_t(_Iterator begin, _Iterator end, _Transformer transformer)
+        : begin_(begin)
+        , end_(end)
+        , transformer_(transformer)
+    {
+        apply_transformation();
+    }
+
+public:
+    typename transforming_iterator_t::reference operator*() const
+    {
+        assert(begin_ != end_);
+        return value_;
+    }
+
+    typename transforming_iterator_t::pointer operator->() const
+    {
+        assert(begin_ != end_);
+        return &value_;
+    }
+
+    transforming_iterator_t& operator++()
+    {
+        if (begin_ != end_)
+        {
+            ++begin_;
+            apply_transformation();
+        }
+
+        return *this;
+    }
+
+    bool operator==(const transforming_iterator_t& other) const
+    {
+        return begin_ == other.begin_;
+    }
+
+    bool operator!=(const transforming_iterator_t& other) const
+    {
+        return !(*this == other);
+    }
+
+private:
+    void apply_transformation()
+    {
+        if (begin_ != end_)
+        {
+            value_ = transformer_(*begin_);
+        }
+    }
+
+private:
+    _Iterator begin_;
+    const _Iterator end_;
+    const _Transformer transformer_;
+    /// todo make optional
+    typename std::remove_cv<_Value>::type value_;
+};
+
+template <typename _Value, typename _Iterator, typename _Transformer>
+transforming_iterator_t<_Iterator, _Transformer, _Value>
+make_transforming_iterator(_Iterator begin, _Iterator end, _Transformer transformer)
+{
+    return transforming_iterator_t<_Iterator, _Transformer, _Value>(begin, end, transformer);
+}
+
 template <typename _Range>
 class range_algorithm_t
 {
@@ -110,11 +185,27 @@ public:
             filtering_iterator_t<iterator, _Predicate> > >
     filter(const _Predicate& pred) const
     {
-        typedef functional_range<range_t<filtering_iterator_t<iterator, _Predicate> > > filtering_range_type;
+        typedef functional_range<range_t<filtering_iterator_t<iterator, _Predicate> > > result_type;
+
         auto begin = make_filter_iterator(range_.begin(), range_.end(), pred);
         auto end = make_filter_iterator(range_.end(), range_.end(), pred);
-        return filtering_range_type(make_range(begin, end));
+        return result_type(make_range(begin, end));
     }
+
+    template <typename _Value, typename _Transformer>
+    functional_range<
+        range_t<transforming_iterator_t<iterator, _Transformer, _Value> >
+    >
+    transform(_Transformer transformer) const
+    {
+        typedef functional_range<range_t<transforming_iterator_t<iterator, _Transformer, _Value> > > result_type;
+
+        auto begin = make_transforming_iterator<_Value>(range_.begin(), range_.end(), transformer);
+        auto end = make_transforming_iterator<_Value>(range_.end(), range_.end(), transformer);
+
+        return result_type(make_range(begin, end));
+    }
+
 
 private:
     const _Range range_;
@@ -181,6 +272,17 @@ void print(int value)
     std::cout << value << " ";
 }
 
+void print_str(std::string str)
+{
+    std::cout << '"' << str << '"' << " ";
+}
+
+/// todo make for values
+std::string tostr(int value)
+{
+    return std::to_string(value);
+}
+
 int main(int argc, const char * argv[])
 {
     int nums[] = {1,2,3,4};
@@ -195,9 +297,9 @@ int main(int argc, const char * argv[])
     enumerate(nums).filter(&is_odd).for_each(&print);
     std::cout << std::endl;
 
-    //std::istream_iterator<int> eos;
-    //std::istream_iterator<int> in(std::cin);
-    //std::cout << "max: " << *std::max_element(in, eos) << std::endl;
+    std::cout << "transform: ";
+    enumerate(nums).transform<std::string>(&tostr).for_each(&print_str);
+    std::cout << std::endl;
 
     return 0;
 }
