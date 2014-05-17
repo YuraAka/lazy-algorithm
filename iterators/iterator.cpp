@@ -21,6 +21,12 @@ public:
         return std::accumulate(range_.begin(), range_.end(), initial);
     }
 
+    template <typename _Operation>
+    void for_each(const _Operation& op) const
+    {
+        std::for_each(range_.begin(), range_.end(), op);
+    }
+
 private:
     const _Range range_;
 };
@@ -75,10 +81,32 @@ functional_range<range_t<_Element*> > enumerate(_Element (&nums)[size])
     return functional_range<range_t<_Element*> >(make_range(nums, nums + size));
 }
 
+bool is_odd(int value)
+{
+    return !!(value % 2);
+}
+
+void print(int value)
+{
+    std::cout << value << " ";
+}
+
 int main(int argc, const char * argv[])
 {
     int nums[] = {1,2,3,4};
-    std::cout << "1+2+3+4=" << enumerate(nums).accumulate() << std::endl;
+    std::cout << "accumulate: ";
+    std::cout << enumerate(nums).accumulate() << std::endl;
+
+    std::cout << "for_each: ";
+    enumerate(nums).for_each(&print);
+    std::cout << std::endl;
+
+    //enumerate(nums).filter(&is_odd)
+
+    //std::istream_iterator<int> eos;
+    //std::istream_iterator<int> in(std::cin);
+    //std::cout << "max: " << *std::max_element(in, eos) << std::endl;
+
     return 0;
 }
 
