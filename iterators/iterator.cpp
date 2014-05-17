@@ -206,6 +206,11 @@ public:
         return result_type(make_range(begin, end));
     }
 
+    template <typename _OutputIterator>
+    void copy(_OutputIterator out)
+    {
+        std::copy(range_.begin(), range_.end(), out);
+    }
 
 private:
     const _Range range_;
@@ -299,6 +304,12 @@ int main(int argc, const char * argv[])
 
     std::cout << "transform: ";
     enumerate(nums).transform<std::string>(&tostr).for_each(&print_str);
+    std::cout << std::endl;
+
+    std::cout << "copy: ";
+    std::vector<int> clone;
+    enumerate(nums).copy(std::back_inserter(clone));
+    std::for_each(clone.begin(), clone.end(), &print);
     std::cout << std::endl;
 
     return 0;
