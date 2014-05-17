@@ -1,172 +1,84 @@
-//
-//  main.cpp
-//  iterators
-//
-//  Created by Юра on 05.05.14.
-//  Copyright (c) 2014 yura. All rights reserved.
-//
-
 #include <iostream>
 #include <vector>
-#include <functional>
 #include <iterator>
+#include <numeric>
 
-template <typename Container>
-class WeakContainerRange
+template <typename _Range>
+class range_algorithm_t
 {
 public:
-    WeakContainerRange(Container& c)
-        : C(c)
-    {
-    }
+    typedef typename _Range::value_type value_type;
 
-    typename Container::iterator Begin()
-    {
-        return C.begin();
-    }
-
-    typename Container::iterator End()
-    {
-        return C.end();
-    }
-    
-    typedef typename Container::iterator It;
-
-private:
-    Container& C;
-};
-
-template <typename Range, typename Predicate>
-class FilteredRange
-{
-private:
-    typedef std::iterator<std::input_iterator_tag, typename Range::It::value_type> IteratorBase;
-    class Iterator : public IteratorBase
-    {
-    public:
-        Iterator(Range range, const Predicate& p)
-            : Current(range.Begin())
-            , End(range.End())
-            , Pred(&p)
-        {
-            SkipBad();
-        }
-                  
-        Iterator(typename Range::It end)
-            : Current(end)
-            , End(end)
-            , Pred(NULL)
-        {
-        }
-        
-        typename IteratorBase::reference operator*()
-        {
-            return *Current;
-        }
-
-        typename Range::It operator->()
-        {
-            return Current;
-        }
-
-        Iterator& operator++()
-        {
-            SkipBad();
-            return *this;
-        }
-
-        bool operator!=(Iterator it) const
-        {
-            return !(it->Current == Current && it->End == End && it->Pred == Pred);
-        }
-
-                  
-    private:
-        void SkipBad()
-        {
-            while (Current != End && !(*Pred)(*Current))
-            {
-                ++Current;
-            }
-        }
-        
-        typename Range::It Current;
-        typename Range::It End;
-        const Predicate* Pred;
-    };
-    
 public:
-    FilteredRange(const Predicate& p, const Range& range)
-        : Pred(p)
-        , R(range)
+    explicit range_algorithm_t(const _Range& range)
+        : range_(range)
     {
-    }
-    
-    Iterator Begin()
-    {
-        return Iterator(R, Pred);
-    }
-    
-    Iterator End()
-    {
-        return Iterator(R.End());
     }
 
-    typedef Iterator It;
+public:
+    value_type accumulate(const value_type& initial = value_type()) const
+    {
+        return std::accumulate(range_.begin(), range_.end(), initial);
+    }
 
 private:
-    const Predicate& Pred;
-    Range R;
+    const _Range range_;
 };
 
-template <typename Container>
-WeakContainerRange<Container> Iterate(Container& c)
-{
-    return WeakContainerRange<Container>(c);
-}
-
-template <typename Range, typename Predicate>
-FilteredRange<Range, Predicate> Filter(Predicate p, Range r)
-{
-    return FilteredRange<Range, Predicate>(p, r);
-}
-
-template <typename Range>
-void Print(Range range)
-{
-    //for (typename Range::It it = range.Begin(); it != range.End(); ++it)
-    //{
-    //    std::cout << *it << std::endl;
-   // }
-   typename Range::It it = range.Begin();
-   *it;
-   ++it;
-   it != range.End();
-}
-
-//limit(count, filter(rule, iterate(shops)))
-//pair<begin, end> range = filter(shops.begin(), shops.end(), rule)
-//range = limit(count, range)
-
-struct MoreThanTwo : public std::unary_function<int, bool>
+template <typename _Iterator>
+class range_t
 {
 public:
-    bool operator()(int arg) const
+    typedef typename std::iterator_traits<_Iterator>::value_type value_type;
+
+public:
+    range_t(_Iterator begin, _Iterator end)
+        : begin_(begin)
+        , end_(end)
     {
-        return arg > 2;
+    }
+
+    _Iterator begin() const
+    {
+        return begin_;
+    }
+
+    _Iterator end() const
+    {
+        return end_;
+    }
+
+private:
+    const _Iterator begin_;
+    const _Iterator end_;
+};
+
+template <typename _Range>
+class functional_range : public range_algorithm_t<_Range>
+{
+public:
+    explicit functional_range(const _Range& range)
+        : range_algorithm_t<_Range>(range)
+    {
     }
 };
+
+template <typename _Iterator>
+range_t<_Iterator> make_range(_Iterator begin, _Iterator end)
+{
+    return range_t<_Iterator>(begin, end);
+}
+
+template <typename _Element, std::size_t size>
+functional_range<range_t<_Element*> > enumerate(_Element (&nums)[size])
+{
+    return functional_range<range_t<_Element*> >(make_range(nums, nums + size));
+}
 
 int main(int argc, const char * argv[])
 {
-    std::vector<int> shops;
-    shops.push_back(1);
-    shops.push_back(2);
-    shops.push_back(3);
-    shops.push_back(4);
-    // insert code here...
-    Print(Filter(MoreThanTwo(), Iterate(shops)));
-    std::cout << "Hello, World!\n";
+    int nums[] = {1,2,3,4};
+    std::cout << "1+2+3+4=" << enumerate(nums).accumulate() << std::endl;
     return 0;
 }
 
