@@ -282,28 +282,64 @@ void print_str(std::string str)
     std::cout << '"' << str << '"' << " ";
 }
 
-/// todo make for values
 std::string tostr(int value)
 {
     return std::to_string(value);
 }
 
+struct add
+{
+    add(int delta)
+        : Delta(delta)
+    {
+    }
+
+    int operator()(int val) const
+    {
+        return val + Delta;
+    }
+
+    int Delta;
+};
+
+struct more_than
+{
+    more_than(int bound)
+        : Bound(bound)
+    {
+    }
+
+    bool operator()(int val) const
+    {
+        return val > Bound;
+    }
+
+    int Bound;
+};
+
 int main(int argc, const char * argv[])
 {
-    int nums[] = {1,2,3,4};
-    std::cout << "accumulate: ";
-    std::cout << enumerate(nums).accumulate() << std::endl;
+    int nums[] = {1,2,3,4,5,6};
 
     std::cout << "for_each: ";
     enumerate(nums).for_each(&print);
     std::cout << std::endl;
 
-    std::cout << "filter: ";
+    std::cout << "accumulate: ";
+    std::cout << enumerate(nums).accumulate() << std::endl;
+
+    std::cout << "filter (odd): ";
     enumerate(nums).filter(&is_odd).for_each(&print);
     std::cout << std::endl;
+    std::cout << "filter (>2): ";
+    enumerate(nums).filter(more_than(2)).for_each(&print);
+    std::cout << std::endl;
 
-    std::cout << "transform: ";
+    std::cout << "transform (to string): ";
     enumerate(nums).transform<std::string>(&tostr).for_each(&print_str);
+    std::cout << std::endl;
+    std::cout << "transform (+3): ";
+    enumerate(nums).transform<int>(add(3)).for_each(&print);
     std::cout << std::endl;
 
     std::cout << "copy: ";
