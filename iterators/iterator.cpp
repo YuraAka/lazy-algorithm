@@ -17,7 +17,9 @@ range_t<_Iterator> make_range(_Iterator begin, _Iterator end);
 
 template <typename _Iterator, typename _Predicate>
 class filtering_iterator_t
-    : public std::iterator<std::input_iterator_tag, typename std::iterator_traits<_Iterator>::value_type>
+    : public std::iterator<
+        std::input_iterator_tag,
+        typename std::add_const<typename std::iterator_traits<_Iterator>::value_type>::type>
 {
 public:
     filtering_iterator_t(_Iterator begin, _Iterator end, _Predicate filter)
@@ -262,9 +264,17 @@ range_t<_Iterator> make_range(_Iterator begin, _Iterator end)
 }
 
 template <typename _Element, std::size_t size>
-functional_range<range_t<_Element*> > enumerate(_Element (&nums)[size])
+functional_range<range_t<_Element*> > enumerate(_Element (&array)[size])
 {
-    return functional_range<range_t<_Element*> >(make_range(nums, nums + size));
+    return functional_range<range_t<_Element*> >(make_range(array, array + size));
+}
+
+template <typename _Container>
+functional_range<range_t<typename _Container::const_iterator> > enumerate(const _Container& container)
+{
+    return functional_range<range_t<typename _Container::const_iterator> >(
+        make_range(container.begin(), container.end())
+    );
 }
 
 bool is_odd(int value)
@@ -282,9 +292,19 @@ void print_str(std::string str)
     std::cout << '"' << str << '"' << " ";
 }
 
+void print_char(char c)
+{
+    std::cout << "'" << c << "' ";
+}
+
 std::string tostr(int value)
 {
     return std::to_string(value);
+}
+
+int toint(char value)
+{
+    return value;
 }
 
 struct add
@@ -317,7 +337,7 @@ struct more_than
     int Bound;
 };
 
-int main(int argc, const char * argv[])
+void array_test()
 {
     int nums[] = {1,2,3,4,5,6};
 
@@ -331,7 +351,7 @@ int main(int argc, const char * argv[])
     std::cout << "filter (odd): ";
     enumerate(nums).filter(&is_odd).for_each(&print);
     std::cout << std::endl;
-    std::cout << "filter (>2): ";
+    std::cout << "filter (> 2): ";
     enumerate(nums).filter(more_than(2)).for_each(&print);
     std::cout << std::endl;
 
@@ -346,6 +366,34 @@ int main(int argc, const char * argv[])
     std::vector<int> clone;
     enumerate(nums).copy(std::back_inserter(clone));
     std::for_each(clone.begin(), clone.end(), &print);
+    std::cout << std::endl;
+}
+
+void vector_test()
+{
+    std::vector<char> symbols = {'a', 'b', 'c', 'd', 'e'};
+
+    std::cout << "for_each: ";
+    enumerate(symbols).for_each(&print_char);
+    std::cout << std::endl;
+
+    std::cout << "filter (> b): ";
+    enumerate(symbols).filter(more_than('b')).for_each(&print_char);
+    std::cout << std::endl;
+
+    std::cout << "transform (to int): ";
+    enumerate(symbols).transform<int>(&toint).for_each(&print);
+    std::cout << std::endl;
+}
+
+int main(int argc, const char * argv[])
+{
+    std::cout << "Array tests:" << std::endl;
+    array_test();
+    std::cout << std::endl;
+
+    std::cout << "Vector tests:" << std::endl;
+    vector_test();
     std::cout << std::endl;
 
     return 0;
